@@ -13,16 +13,16 @@ jobs:
     - name: Install Julia
       uses: julia-actions/setup-julia@v1
       with:
-        version: 1.5
+        version: 1.8
     - run: julia -e '
             import Pkg; Pkg.activate("page/Project.toml"); Pkg.instantiate();
             using NodeJS;
             run(`$(npm_cmd()) install highlight.js purgecss`);
             import PkgPage;
             PkgPage.optimize(input="page", output="")'
-    - run: touch page/__site/.nojekyll
+    - run: touch __site/.nojekyll
     - name: Deploy 🚀
       uses: JamesIves/github-pages-deploy-action@releases/v4
       with:
         BRANCH: gh-pages
-        FOLDER: page/__site
+        FOLDER: __site
