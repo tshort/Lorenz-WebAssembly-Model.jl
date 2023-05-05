@@ -1,5 +1,5 @@
 @def title       = "Lorenz Attraction App in Julia"
-@def prepath     = ""
+@def prepath     = "Lorenz-WebAssembly-Model.jl"
 @def description = """
                    An example app to demonstrate how Julia code for DiffEq-type 
                    simulations can be compiled for use on the web.
