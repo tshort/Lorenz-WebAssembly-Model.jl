@@ -67,7 +67,7 @@
 
 @def add_github_view  = true
 @def add_github_star  = true
-@def github_repo      = "tlienart/PkgPage.jl"
+@def github_repo      = "tshort/Lorenz-WebAssembly-Model.jl"
 
 <!-- SECTION LAYOUT
 NOTE:
