@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- META -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="author" content="Tom Short">
+  <title>Lorenz Attraction App in Julia</title>
+
+  <link rel="icon" type="image/png"  href="/Lorenz-WebAssembly-Model.jl/assets/favicon.ico">
+
+  <!-- CSS -->
+  
+   <link rel="stylesheet" href="/Lorenz-WebAssembly-Model.jl/libs/highlight/styles/atom-one-dark.css">
+   
+  <link rel="stylesheet" href="/Lorenz-WebAssembly-Model.jl/css/bootstrap.min.css">
+  <style>.bg-primary {
+  background-color: #3f6388 !important;
+}
+
+a {
+  color: #2669DD;
+}
+
+a:hover {
+  color: teal;
+}
+
+.section-bg-color {
+  background-color: #f6f8fa;
+}
+
+footer a {
+  color: cornflowerblue;
+}
+
+
+header {
+  margin-top: 55px !important;
+}
+
+
+
+.jumbotron {
+  background-image: url("assets/diagonal-lines.svg");
+  background-repeat: repeat;
+}
+
+
+/* CODE ADJUSTMENTS */
+
+pre code.hljs {
+  border-radius: 10px;
+}
+
+pre code.hljs.plaintext {
+  margin-left: 15px;
+}
+</style>
+  <link rel="stylesheet" href="/Lorenz-WebAssembly-Model.jl/css/custom.css">
+
+  <script async defer src="https://buttons.github.io/buttons.js"></script>
+</head>
+<body id="page-top">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top" id="mainNav">
+  <div class="container">
+    <span class="navbar-brand">
+      
+        <img src="/Lorenz-WebAssembly-Model.jl/assets/logo.svg" class="img-fluid" style="height:         25px;
+padding-right:  10px;
+" alt="Logo"/>
+      
+      <a href="#page-top">Lorenz Attraction App in Julia</a>
+      
+      ｜ <a href="https://tshort.github.com/Lorenz-WebAssembly-Model.jl" target="_blank">GitHub</a>
+      
+    </span>
+    <input type="checkbox" id="navbar-toggler-cbox" class="d-none" />
+    <label for="navbar-toggler-cbox" class="navbar-toggler" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </label>
+    <div class="collapse navbar-collapse" id="navbarResponsive">
+      <ul class="navbar-nav ml-auto">
+        
+        <li class="nav-item">
+          <a class="nav-link" href="#13633231208144796923"></a>
+        </li>
+        
+        <li class="nav-item">
+          <a class="nav-link" href="#components">Components</a>
+        </li>
+        
+        <li class="nav-item">
+          <a class="nav-link" href="#webassembly">WebAssembly</a>
+        </li>
+        
+        <li class="nav-item">
+          <a class="nav-link" href="#interfacing">Interfacing</a>
+        </li>
+        
+        <li class="nav-item">
+          <a class="nav-link" href="#publishing">Publishing</a>
+        </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+  <!-- Content appended here -->
+<div class="franklin-content"><section id="13633231208144796923" class="scrollspy">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <h2></h2> <div id="mdpad"></div></div>
+       </div>
+    </div>
+  </div>
+</section>
+<section id="components" class="scrollspy section-bg-color">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <h2>Components</h2></p>
+<p>This is an example app to demonstrate how Julia code for DiffEq-type simulations can be compiled for use on the web. This app is built with the following:</p>
+<ul>
+<li><p><a href="https://github.com/tshort/StaticCompiler.jl">StaticCompiler</a> compiles a Julia model to WebAssembly. This uses <a href="https://github.com/JuliaGPU/GPUCompiler.jl">GPUCompiler</a> which does most of the work. <a href="https://github.com/brenhinkeller/StaticTools.jl">StaticTools</a> helps with this static compilation.</p>
+</li>
+<li><p><a href="https://github.com/SciML/DiffEqGPU.jl">DiffEqGPU</a> provides simulation code that is amenable to static compilation.</p>
+</li>
+<li><p><a href="https://github.com/tshort/WebAssemblyInterfaces.jl">WebAssemblyInterfaces</a> and <a href="https://github.com/demille/wasm-ffi">wasm-ffi</a> provide convenient ways to interface between JavaScript and Julia/WebAssembly code.</p>
+</li>
+<li><p><a href="https://mdpad.netlify.app/">mdpad</a> provides features for single-page web apps.</p>
+</li>
+<li><p><a href="https://github.com/tlienart/PkgPage.jl">PkgPage</a> and <a href="https://github.com/tlienart/Franklin.jl">Franklin</a> build this page from Markdown. The source code on this page also compiles the WebAssembly modeling code.</p>
+</li>
+</ul>
+<p>      </div>
+    </div>
+  </div>
+</section>
+<section id="webassembly" class="scrollspy">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <h2>WebAssembly</h2></p>
+<p>Here is the model with initial conditions that we&#39;ll compile. The important part is using <a href="https://github.com/SciML/DiffEqGPU.jl">DiffEqGPU</a> to set up an integrator. Because it is designed to run on a GPU, it is natural for static compilation. It doesn&#39;t allocate or use features from <code>libjulia</code>.</p>
+<pre><code class="julia hljs"><span class="hljs-keyword">using</span> DiffEqGPU, StaticArrays, OrdinaryDiffEq
+
+<span class="hljs-keyword">function</span> lorenz(u, p, t)
+    σ = p[<span class="hljs-number">1</span>]
+    ρ = p[<span class="hljs-number">2</span>]
+    β = p[<span class="hljs-number">3</span>]
+    du1 = σ * (u[<span class="hljs-number">2</span>] - u[<span class="hljs-number">1</span>])
+    du2 = u[<span class="hljs-number">1</span>] * (ρ - u[<span class="hljs-number">3</span>]) - u[<span class="hljs-number">2</span>]
+    du3 = u[<span class="hljs-number">1</span>] * u[<span class="hljs-number">2</span>] - β * u[<span class="hljs-number">3</span>]
+    <span class="hljs-keyword">return</span> SVector{<span class="hljs-number">3</span>}(du1, du2, du3)
+<span class="hljs-keyword">end</span>
+
+u0 = <span class="hljs-meta">@SVector</span> [<span class="hljs-number">1.0</span>; <span class="hljs-number">0.0</span>; <span class="hljs-number">0.0</span>]
+tspan = (<span class="hljs-number">0.0</span>, <span class="hljs-number">20.0</span>)
+p = <span class="hljs-meta">@SVector</span> [<span class="hljs-number">10.0</span>, <span class="hljs-number">28.0</span>, <span class="hljs-number">8</span> / <span class="hljs-number">3.0</span>]
+prob = ODEProblem{<span class="hljs-literal">false</span>}(lorenz, u0, tspan, p)
+
+integ = DiffEqGPU.gputsit5_init(GPUTsit5(), lorenz, <span class="hljs-literal">false</span>, u0, <span class="hljs-number">0.0</span>, <span class="hljs-number">0.005</span>, p, <span class="hljs-literal">nothing</span>, CallbackSet(<span class="hljs-literal">nothing</span>), <span class="hljs-literal">true</span>, <span class="hljs-literal">false</span>)</code></pre>
+<p>Now, we can define a function to solve this model. We won&#39;t use <code>DiffEqGPU.solve&#40;&#41;</code> because that&#39;s too complicated. Instead, we&#39;ll use <code>integ</code> and manually step through the solution. We&#39;ll update solution vectors along the way. </p>
+<pre><code class="julia hljs"><span class="hljs-keyword">function</span> solv(integ, tres, u1, u2, u3)
+    <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">Int32</span>(<span class="hljs-number">1</span>):<span class="hljs-built_in">Int32</span>(<span class="hljs-number">10000</span>)
+        <span class="hljs-meta">@inline</span> DiffEqGPU.step!(integ, integ.t + integ.dt, integ.u)
+        tres[i] = integ.t
+        u1[i] = integ.u[<span class="hljs-number">1</span>]
+        u2[i] = integ.u[<span class="hljs-number">2</span>]
+        u3[i] = integ.u[<span class="hljs-number">3</span>]
+    <span class="hljs-keyword">end</span>
+    <span class="hljs-literal">nothing</span>
+<span class="hljs-keyword">end</span></code></pre>
+<p>Now, we can compile <code>solv</code> to the WebAssembly file <code>_libs/julia_solv.wasm</code> using <code>StaticCompiler.compile_wasm</code>. <code>StaticTools.MallocVector</code> is used for the solution vectors. When compiling, <code>flags</code> are passed to the WebAssembly linker &#40;<code>lld -flavor wasm</code>&#41;, and we can include the initial memory size and other files to link in. Initial memory must be big enough to hold objects we&#39;ll use.</p>
+<pre><code class="julia hljs"><span class="hljs-keyword">using</span> StaticCompiler, StaticTools
+
+compile_wasm(solv, 
+    <span class="hljs-built_in">Tuple</span>{typeof(integ), 
+          MallocVector{<span class="hljs-built_in">Float64</span>}, MallocVector{<span class="hljs-built_in">Float64</span>}, 
+          MallocVector{<span class="hljs-built_in">Float64</span>}, MallocVector{<span class="hljs-built_in">Float64</span>}}, 
+    path = <span class="hljs-string">&quot;_libs&quot;</span>,
+    flags = <span class="hljs-string">`--initial-memory=1048576 walloc.o`</span>, filename = <span class="hljs-string">&quot;julia_solv&quot;</span>)</code></pre>
+<p><a href="https://github.com/tshort/StaticCompiler.jl">StaticCompiler</a> can only compile a restricted subset of Julia code. <a href="https://github.com/SciML/DiffEqGPU.jl">DiffEqGPU</a> is amenable to static compilation. It doesn&#39;t have internal allocations or use of Arrays or other code needing <code>libjulia</code> functionality. Note that DiffEqGPU has fewer options for solvers, and solvers are not as robust as standard DiffEq packages.  </p>
+<p>Note that WebAssembly in browsers is mainly a 32-bit system &#40;<code>wasm32</code>&#41;. A 64-bit Julia can compile to <code>wasm32</code>, but the best approach is to use a 32-bit version of Julia, so the memory layouts are closer. This page was developed locally with 64-bit Julia.</p>
+<p>      </div>
+    </div>
+  </div>
+</section>
+<section id="interfacing" class="scrollspy section-bg-color">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <h2>Interfacing</h2></p>
+<p><a href="https://github.com/demille/wasm-ffi">wasm-ffi</a> is a great JavaScript package that provides convenient ways to interface between JavaScript and WebAssembly code. It can allocate objects in WebAssembly memory and provides conveniences to read and write to those objects. We use the Julia package <a href="https://github.com/tshort/WebAssemblyInterfaces.jl">WebAssemblyInterfaces</a> to generate JavaScript code for <code>wasm-ffi</code>. </p>
+<p>WebAssembly has no automatic memory management. All WebAssembly memory must be manually allocated and freed. <code>wasm-ffi</code> will allocate objects upon definition. The WebAssembly code must include <code>allocate</code> and <code>deallocate</code> functions. Up above, we linked to the file <code>walloc.o</code> in the <code>--initial-memory&#61;1048576 walloc.o</code> statement. This is from <a href="https://github.com/wingo/walloc">walloc</a>. The <code>flags</code> argument is passed to the linker and can include other <code>wasm32</code> object files. The memory must be a multiple of 65536 bytes.</p>
+<p><a href="https://github.com/SciML/DiffEqGPU.jl/blob/73f76809439424245d7bfd48f70c9a625e29101c/src/integrators/types.jl#L11-L46">This</a> is the definition of the integrator used by <code>solv</code>. It is a mutable struct. Here is how we generate interfacing code that generates types in JavaScript that will replicate the memory layout we need in Julia:</p>
+<pre><code class="julia hljs"><span class="hljs-keyword">using</span> WebAssemblyInterfaces
+
+integ_types = js_types(typeof(integ))
+integ_def = js_def(integ)
+
+println(integ_types)</code></pre>
+<pre><code class="plaintext hljs">const SArray = new ffi.Struct({
+    data: [&#x27;f64&#x27;, 3],
+});
+
+const SArrayTuple_6__Float64_1_6 = new ffi.Struct({
+    data: [&#x27;f64&#x27;, 6],
+});
+
+const SArrayTuple_21__Float64_1_21 = new ffi.Struct({
+    data: [&#x27;f64&#x27;, 21],
+});
+
+const SArrayTuple_22__Float64_1_22 = new ffi.Struct({
+    data: [&#x27;f64&#x27;, 22],
+});
+
+const GPUTsit5Integrator = new ffi.Struct({
+    uprev: SArray,
+    u: SArray,
+    tmp: SArray,
+    tprev: &#x27;f64&#x27;,
+    t: &#x27;f64&#x27;,
+    t0: &#x27;f64&#x27;,
+    dt: &#x27;f64&#x27;,
+    tdir: &#x27;f64&#x27;,
+    p: SArray,
+    u_modified: &#x27;bool&#x27;,
+    tstops_idx: &#x27;int64&#x27;,
+    save_everystep: &#x27;bool&#x27;,
+    saveat: &#x27;bool&#x27;,
+    cur_t: &#x27;int64&#x27;,
+    step_idx: &#x27;int64&#x27;,
+    event_last_time: &#x27;int64&#x27;,
+    vector_event_last_time: &#x27;int64&#x27;,
+    last_event_error: &#x27;f64&#x27;,
+    k1: SArray,
+    k2: SArray,
+    k3: SArray,
+    k4: SArray,
+    k5: SArray,
+    k6: SArray,
+    k7: SArray,
+    cs: SArrayTuple_6__Float64_1_6,
+    as: SArrayTuple_21__Float64_1_21,
+    rs: SArrayTuple_22__Float64_1_22,
+    retcode: &#x27;int32&#x27;,
+});
+
+</code></pre>
+<p>We will later use both of these results to splice this into our JavaScript code included in this file. </p>
+<p>On the JavaScript side, we can manipulate the object as you would expect, like <code>integ.dt &#61; 0.2</code> or <code>integ.p &#61; &#91;12, 3, 4&#93;</code>.</p>
+<p>      </div>
+    </div>
+  </div>
+</section>
+<section id="publishing" class="scrollspy">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-10 mx-auto">
+        <h2>Publishing</h2></p>
+<p>WebAssembly files can be used in any type of web page, including those created with static-site generators like Jekyll. Julia has several great options for creating HTML pages, including <a href="https://documenter.juliadocs.org/stable/">Documenter</a>, <a href="https://franklinjl.org/">Franklin</a>, and <a href="https://fredrikekre.github.io/Literate.jl/v2/">Literate</a>. For this page, I used <a href="https://tlienart.github.io/PkgPage.jl/">PkgPage</a> which is nice for &quot;one pagers&quot;. Using a Julia-based option is nicer in that we can use the results and stuff them in the page. For example, the interfacing code above is directly included with a custom PkgPage/Franklin HTML command.</p>
+<p>We also need JavaScript to control interactivity. &#40;Doing this on the Julia/WebAssembly side is not yet feasible.&#41; There are so many JavaScript packages, it&#39;s hard to pick. Here, I use <a href="https://mdpad.netlify.app/">mdpad</a> which has features that are nice for one-page apps. To use it, we need to define <code>mdpad_init</code> and <code>mdpad_update</code> functions. I used <a href="https://mithril.js.org/">Mithril.js</a> to generate inputs and outputs. </p>
+<p>To start with, we&#39;ll write out our interfacing code from above. We&#39;ll use a custom Franklin HTML command to insert this into the HTML for this page &#40;<code>&#123;&#123; rawoutput j5 &#125;&#125;</code> later in this file&#41;. <code>integ_types</code> is just stored as regular definition. <code>integ_def</code> is defined as a function to allow new instances to be created.</p>
+<pre><code class="julia hljs">println(<span class="hljs-string">&quot;&lt;script&gt;\n&quot;</span>, integ_types, <span class="hljs-string">&quot;\n\n&quot;</span>)
+println(<span class="hljs-string">&quot;function new_integ() {return &quot;</span>, integ_def, <span class="hljs-string">&quot;\n}\n&lt;/script&gt;&quot;</span>)</code></pre>
+<p>Now, we need to define our interfacing code using wasm-ffi. This code is included in this Markdown file with <code>~~~</code> delimeters. <code>ffi.rust.vector</code> maps to a <code>StaticTools.MallocVector</code>.</p>
+<pre><code class="c hljs"><span class="hljs-type">const</span> library = new ffi.Wrapper({
+  julia_solv: [<span class="hljs-string">&#x27;number&#x27;</span>, [GPUTsit5Integrator, ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>), ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>),
+                                              ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>), ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>)]],
+}, {debug: <span class="hljs-literal">false</span>});
+
+library.imports(wrap =&gt; ({
+  env: {
+    memory: new WebAssembly.Memory({ initial: <span class="hljs-number">16</span> }),
+  },
+}));</code></pre>
+<p>Here are definitions for output vectors passed to Julia code.</p>
+<pre><code class="c hljs">var t = new ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>, new Float64Array(<span class="hljs-number">10000</span>))
+var u1 = new ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>, new Float64Array(<span class="hljs-number">10000</span>))
+var u2 = new ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>, new Float64Array(<span class="hljs-number">10000</span>))
+var u3 = new ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hljs-string">&#x27;f64&#x27;</span>, new Float64Array(<span class="hljs-number">10000</span>))</code></pre>
+<p>In <code>mdpad_init</code>, we load the WebAssembly file <code>libs/julia_solv.wasm</code> and then create an input form.</p>
+<pre><code class="c hljs">async function <span class="hljs-title function_">mdpad_init</span><span class="hljs-params">()</span> {
+    await library.fetch(<span class="hljs-string">&#x27;libs/julia_solv.wasm&#x27;</span>)
+    var layout =
+      m(<span class="hljs-string">&quot;.row&quot;</span>,
+        m(<span class="hljs-string">&quot;.col-md-3&quot;</span>,
+          m(<span class="hljs-string">&quot;br&quot;</span>),
+          m(<span class="hljs-string">&quot;br&quot;</span>),
+          m(<span class="hljs-string">&quot;form.form&quot;</span>,
+            minput({ title:<span class="hljs-string">&quot;σ&quot;</span>, mdpad:<span class="hljs-string">&quot;p1&quot;</span>, step:<span class="hljs-number">0.2</span>, value:<span class="hljs-number">10.0</span> }),
+            minput({ title:<span class="hljs-string">&quot;ρ&quot;</span>, mdpad:<span class="hljs-string">&quot;p2&quot;</span>, step:<span class="hljs-number">1.0</span>, value:<span class="hljs-number">28.0</span> }),
+            minput({ title:<span class="hljs-string">&quot;β&quot;</span>, mdpad:<span class="hljs-string">&quot;p3&quot;</span>, step:<span class="hljs-number">0.1</span>, value:<span class="hljs-number">8</span> / <span class="hljs-number">3</span> }),
+           )),
+        m(<span class="hljs-string">&quot;.col-md-1&quot;</span>),
+        m(<span class="hljs-string">&quot;.col-md-8&quot;</span>,
+          m(<span class="hljs-string">&quot;#results&quot;</span>),
+          m(<span class="hljs-string">&quot;#plot1&quot;</span>, {style:<span class="hljs-string">&quot;max-width:500px&quot;</span>})),
+      m(<span class="hljs-string">&quot;.row&quot;</span>,
+        m(<span class="hljs-string">&quot;.col-md-1&quot;</span>),
+        m(<span class="hljs-string">&quot;.col-md-8&quot;</span>,
+          m(<span class="hljs-string">&quot;#plot2&quot;</span>))))
+    await m.render(document.querySelector(<span class="hljs-string">&quot;#mdpad&quot;</span>), layout);
+}</code></pre>
+<p><code>mdpad_update</code>, creates allocates a new integrator, updates the initial conditions using data from the form, and runs <code>julia_solv</code>. <code>julia_solv</code> fills up the output vectors, and we plot these with Plotly.</p>
+<pre><code class="c hljs">function <span class="hljs-title function_">mdpad_update</span><span class="hljs-params">()</span> {
+    var integ = new_integ();
+    integ.p.data = [mdpad.p1, mdpad.p2, mdpad.p3];
+    library.julia_solv(integ, t, u1, u2, u3);
+    integ.<span class="hljs-built_in">free</span>();
+    tdata = [{x: t.values, y: u1.values, type: <span class="hljs-string">&quot;line&quot;</span>, name: <span class="hljs-string">&quot;x&quot;</span>}, 
+            {x: t.values, y: u2.values, type: <span class="hljs-string">&quot;line&quot;</span>, name: <span class="hljs-string">&quot;y&quot;</span>}, 
+            {x: t.values, y: u3.values, type: <span class="hljs-string">&quot;line&quot;</span>, name: <span class="hljs-string">&quot;z&quot;</span>}] 
+    tplot = mplotly(tdata, { width: <span class="hljs-number">900</span>, height: <span class="hljs-number">300</span>, margin: { t: <span class="hljs-number">20</span>, b: <span class="hljs-number">20</span> }}, {responsive: <span class="hljs-literal">true</span>})
+    m.render(document.querySelector(<span class="hljs-string">&quot;#plot2&quot;</span>), tplot)
+    xydata = [{x: u1.values, y: u2.values, type: <span class="hljs-string">&quot;line&quot;</span>, name: <span class="hljs-string">&quot;x&quot;</span>}] 
+    xyplot = mplotly(xydata, { width: <span class="hljs-number">400</span>, height: <span class="hljs-number">400</span>, margin: { t: <span class="hljs-number">20</span>, b: <span class="hljs-number">20</span>, l: <span class="hljs-number">20</span>, r: <span class="hljs-number">20</span> }}, {responsive: <span class="hljs-literal">true</span>})
+    m.render(document.querySelector(<span class="hljs-string">&quot;#plot1&quot;</span>), xyplot)
+}</code></pre>
+<p>That&#39;s it&#33; Overall, the experience with PkgPage is rather interactive. During development, make changes to the Julia code, the Markdown, or the JavaScript code, save the file, and watch results update in the browser.</p>
+<p>This work takes inspiration from this cool <a href="https://github.com/Alexander-Barth/FluidSimDemo-WebAssembly">fluid simulation tool</a> in Julia/WebAssembly by Alexander Barth.</p>
+<p>      </div>
+    </div>
+  </div>
+</section>
+<p>
+
+<script src="libs/mdpad/mdpad.js"></script>
+<script src="libs/mdpad/mdpad-mithril.js"></script>
+<script src="libs/wasm-ffi.browser.js"></script>
+
+ <script>
+const SArray = new ffi.Struct({
+    data: ['f64', 3],
+});
+
+const SArrayTuple_6__Float64_1_6 = new ffi.Struct({
+    data: ['f64', 6],
+});
+
+const SArrayTuple_21__Float64_1_21 = new ffi.Struct({
+    data: ['f64', 21],
+});
+
+const SArrayTuple_22__Float64_1_22 = new ffi.Struct({
+    data: ['f64', 22],
+});
+
+const GPUTsit5Integrator = new ffi.Struct({
+    uprev: SArray,
+    u: SArray,
+    tmp: SArray,
+    tprev: 'f64',
+    t: 'f64',
+    t0: 'f64',
+    dt: 'f64',
+    tdir: 'f64',
+    p: SArray,
+    u_modified: 'bool',
+    tstops_idx: 'int64',
+    save_everystep: 'bool',
+    saveat: 'bool',
+    cur_t: 'int64',
+    step_idx: 'int64',
+    event_last_time: 'int64',
+    vector_event_last_time: 'int64',
+    last_event_error: 'f64',
+    k1: SArray,
+    k2: SArray,
+    k3: SArray,
+    k4: SArray,
+    k5: SArray,
+    k6: SArray,
+    k7: SArray,
+    cs: SArrayTuple_6__Float64_1_6,
+    as: SArrayTuple_21__Float64_1_21,
+    rs: SArrayTuple_22__Float64_1_22,
+    retcode: 'int32',
+});
+
+
+
+function new_integ() {return new GPUTsit5Integrator({
+uprev: new SArray({
+data: [1.0,0.0,0.0],
+}),
+u: new SArray({
+data: [1.0,0.0,0.0],
+}),
+tmp: new SArray({
+data: [1.0,0.0,0.0],
+}),
+tprev: 0.0,
+t: 0.0,
+t0: 0.0,
+dt: 0.005,
+tdir: 1.0,
+p: new SArray({
+data: [10.0,28.0,2.6666666666666665],
+}),
+u_modified: true,
+tstops_idx: 1,
+save_everystep: true,
+saveat: false,
+cur_t: 1,
+step_idx: 1,
+event_last_time: 1,
+vector_event_last_time: 0,
+last_event_error: 0.0,
+k1: new SArray({
+data: [1.0,0.0,0.0],
+}),
+k2: new SArray({
+data: [1.0,0.0,0.0],
+}),
+k3: new SArray({
+data: [1.0,0.0,0.0],
+}),
+k4: new SArray({
+data: [1.0,0.0,0.0],
+}),
+k5: new SArray({
+data: [1.0,0.0,0.0],
+}),
+k6: new SArray({
+data: [1.0,0.0,0.0],
+}),
+k7: new SArray({
+data: [1.0,0.0,0.0],
+}),
+cs: new SArrayTuple_6__Float64_1_6({
+data: [0.161,0.327,0.9,0.9800255409045097,1.0,1.0],
+}),
+as: new SArrayTuple_21__Float64_1_21({
+data: [0.161,-0.008480655492356989,0.335480655492357,2.8971530571054935,-6.359448489975075,4.3622954328695815,5.325864828439257,-11.748883564062828,7.4955393428898365,-0.09249506636175525,5.86145544294642,-12.92096931784711,8.159367898576159,-0.071584973281401,-0.028269050394068383,0.09646076681806523,0.01,0.4798896504144996,1.379008574103742,-3.290069515436081,2.324710524099774],
+}),
+rs: new SArrayTuple_22__Float64_1_22({
+data: [1.0,-2.763706197274826,2.9132554618219126,-1.0530884977290216,0.13169999999999998,-0.2234,0.1017,3.9302962368947516,-5.941033872131505,2.490627285651253,-12.411077166933676,30.33818863028232,-16.548102889244902,37.50931341651104,-88.1789048947664,47.37952196281928,-27.896526289197286,65.09189467479366,-34.87065786149661,1.5,-4.0,2.5],
+}),
+retcode: 0,
+})
+}
+</script>
+ 
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mithril/2.0.4/mithril.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-basic-1.54.1.min.js"></script>
+
+
+<script>
+const library = new ffi.Wrapper({
+  julia_solv: ['number', [GPUTsit5Integrator, ffi.rust.vector('f64'), ffi.rust.vector('f64'),
+                                              ffi.rust.vector('f64'), ffi.rust.vector('f64')]],
+}, {debug: false});
+
+library.imports(wrap => ({
+  env: {
+    memory: new WebAssembly.Memory({ initial: 16 }),
+  },
+}));
+
+var t = new ffi.rust.vector('f64', new Float64Array(10000))
+var u1 = new ffi.rust.vector('f64', new Float64Array(10000))
+var u2 = new ffi.rust.vector('f64', new Float64Array(10000))
+var u3 = new ffi.rust.vector('f64', new Float64Array(10000))
+
+
+async function mdpad_init() {
+    await library.fetch('libs/julia_solv.wasm')
+    var layout =
+      m(".row",
+        m(".col-md-3",
+          m("br"),
+          m("br"),
+          m("form.form",
+            minput({ title:"σ", mdpad:"p1", step:0.2, value:10.0 }),
+            minput({ title:"ρ", mdpad:"p2", step:1.0, value:28.0 }),
+            minput({ title:"β", mdpad:"p3", step:0.1, value:8 / 3 }),
+           )),
+        m(".col-md-1"),
+        m(".col-md-8",
+          m("#results"),
+          m("#plot1", {style:"max-width:500px"})),
+      m(".row",
+        m(".col-md-1"),
+        m(".col-md-8",
+          m("#plot2"))))
+    await m.render(document.querySelector("#mdpad"), layout);
+}
+
+function mdpad_update() {
+    var integ = new_integ();
+    integ.p.data = [mdpad.p1, mdpad.p2, mdpad.p3];
+    library.julia_solv(integ, t, u1, u2, u3);
+    integ.free();
+    tdata = [{x: t.values, y: u1.values, type: "line", name: "x"}, 
+            {x: t.values, y: u2.values, type: "line", name: "y"}, 
+            {x: t.values, y: u3.values, type: "line", name: "z"}] 
+    tplot = mplotly(tdata, { width: 900, height: 300, margin: { t: 20, b: 20 }}, {responsive: true})
+    m.render(document.querySelector("#plot2"), tplot)
+    xydata = [{x: u1.values, y: u2.values, type: "line", name: "x"}] 
+    xyplot = mplotly(xydata, { width: 400, height: 400, margin: { t: 20, b: 20, l: 20, r: 20 }}, {responsive: true})
+    m.render(document.querySelector("#plot1"), xyplot)
+}
+</script>
+
+</p>
+<footer class="py-5 bg-dark">
+  <div class="container">
+    <p class="m-0 text-center text-white">&copy; Tom Short. Website powered by <a href="https://github.com/tlienart/Franklin.jl">Franklin.jl</a>, <a href="https://github.com/tlienart/PkgPage.jl">PkgPage.jl</a> and the <a href="https://julialang.org">Julia</a> programming language.</p>
+  </div>
+</footer>
+</div><!-- CONTENT ENDS HERE -->
+  
+  
+      
+
+
+  
+  <script src="/Lorenz-WebAssembly-Model.jl/libs/simple-scrollspy.min.js"></script>
+  <script>
+  window.onload = function () {
+    scrollSpy('#navbarResponsive', {
+      sectionClass: '.scrollspy',
+      menuActiveTarget: '.nav-link',
+      offset: 100
+    })
+  }
+  </script>
+  </body>
+</html>

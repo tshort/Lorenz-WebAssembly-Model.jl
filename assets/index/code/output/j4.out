@@ -1,0 +1,48 @@
+const SArray = new ffi.Struct({
+    data: ['f64', 3],
+});
+
+const SArrayTuple_6__Float64_1_6 = new ffi.Struct({
+    data: ['f64', 6],
+});
+
+const SArrayTuple_21__Float64_1_21 = new ffi.Struct({
+    data: ['f64', 21],
+});
+
+const SArrayTuple_22__Float64_1_22 = new ffi.Struct({
+    data: ['f64', 22],
+});
+
+const GPUTsit5Integrator = new ffi.Struct({
+    uprev: SArray,
+    u: SArray,
+    tmp: SArray,
+    tprev: 'f64',
+    t: 'f64',
+    t0: 'f64',
+    dt: 'f64',
+    tdir: 'f64',
+    p: SArray,
+    u_modified: 'bool',
+    tstops_idx: 'int64',
+    save_everystep: 'bool',
+    saveat: 'bool',
+    cur_t: 'int64',
+    step_idx: 'int64',
+    event_last_time: 'int64',
+    vector_event_last_time: 'int64',
+    last_event_error: 'f64',
+    k1: SArray,
+    k2: SArray,
+    k3: SArray,
+    k4: SArray,
+    k5: SArray,
+    k6: SArray,
+    k7: SArray,
+    cs: SArrayTuple_6__Float64_1_6,
+    as: SArrayTuple_21__Float64_1_21,
+    rs: SArrayTuple_22__Float64_1_22,
+    retcode: 'int32',
+});
+
