@@ -16,7 +16,7 @@
   - nav_logo_path: where the logo is
 -->
 @def add_docs  = true
-@def docs_url  = "https://tshort.github.com/Lorenz-WebAssembly-Model.jl"
+@def docs_url  = "https://github.com/tshort/Lorenz-WebAssembly-Model.jl"
 @def docs_name = "GitHub"
 
 @def add_nav_logo   = true

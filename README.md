@@ -1,5 +1,3 @@
-Works locally: publishing is still a WIP...
-
 
 ## 
 
