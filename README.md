@@ -1,7 +1,7 @@
 
 ## 
 
-The app and instructions are at [Lorenz Attraction App in Julia](http://tshort.github.io/Lorenz-WebAssembly-Model.jl). 
+The app and instructions are at [Lorenz Attraction App in Julia](http://tshort.github.io/Lorenz-WebAssembly-OrdinaryDiffEq.jl). 
 
 Of the files in this folder, the main ones that are special to this app are:
 

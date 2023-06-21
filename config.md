@@ -1,4 +1,4 @@
-@def title       = "Lorenz Attraction App in Julia"
+@def title       = "Lorenz App with OrdinaryDiffEq.jl"
 @def prepath     = ""
 @def description = """
                    An example app to demonstrate how Julia code for DiffEq-type 
@@ -16,7 +16,7 @@
   - nav_logo_path: where the logo is
 -->
 @def add_docs  = true
-@def docs_url  = "https://tshort.github.com/Lorenz-WebAssembly-Model.jl"
+@def docs_url  = "https://tshort.github.com/Lorenz-WebAssembly-OrdinaryDiffEq.jl"
 @def docs_name = "GitHub"
 
 @def add_nav_logo   = true
@@ -67,7 +67,7 @@
 
 @def add_github_view  = true
 @def add_github_star  = true
-@def github_repo      = "tlienart/PkgPage.jl"
+@def github_repo      = "tshort/Lorenz-WebAssembly-OrdinaryDiffEq.jl"
 
 <!-- SECTION LAYOUT
 NOTE:

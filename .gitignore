@@ -1,2 +1,4 @@
 /Manifest.toml
 __site/
+node_modules
+package-lock.json
