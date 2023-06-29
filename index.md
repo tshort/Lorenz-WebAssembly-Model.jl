@@ -37,7 +37,7 @@ tspan = (0.0, 20.0)
 p = @SVector [10.0, 28.0, 8 / 3.0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
-integ = DiffEqGPU.gputsit5_init(GPUTsit5(), lorenz, false, u0, 0.0, 0.005, p, nothing, CallbackSet(nothing), true, false)
+integ = DiffEqGPU.init(GPUTsit5(), prob.f, false, u0, 0.0, 0.005, p, nothing, CallbackSet(nothing), true, false)
 ```
 
 Now, we can define a function to solve this model. We won't use `DiffEqGPU.solve()` because that's too complicated. Instead, we'll use `integ` and manually step through the solution. We'll update solution vectors along the way. 
