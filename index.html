@@ -163,7 +163,7 @@ tspan = (<span class="hljs-number">0.0</span>, <span class="hljs-number">20.0</s
 p = <span class="hljs-meta">@SVector</span> [<span class="hljs-number">10.0</span>, <span class="hljs-number">28.0</span>, <span class="hljs-number">8</span> / <span class="hljs-number">3.0</span>]
 prob = ODEProblem{<span class="hljs-literal">false</span>}(lorenz, u0, tspan, p)
 
-integ = DiffEqGPU.gputsit5_init(GPUTsit5(), lorenz, <span class="hljs-literal">false</span>, u0, <span class="hljs-number">0.0</span>, <span class="hljs-number">0.005</span>, p, <span class="hljs-literal">nothing</span>, CallbackSet(<span class="hljs-literal">nothing</span>), <span class="hljs-literal">true</span>, <span class="hljs-literal">false</span>)</code></pre>
+integ = DiffEqGPU.init(GPUTsit5(), prob.f, <span class="hljs-literal">false</span>, u0, <span class="hljs-number">0.0</span>, <span class="hljs-number">0.005</span>, p, <span class="hljs-literal">nothing</span>, CallbackSet(<span class="hljs-literal">nothing</span>), <span class="hljs-literal">true</span>, <span class="hljs-literal">false</span>)</code></pre>
 <p>Now, we can define a function to solve this model. We won&#39;t use <code>DiffEqGPU.solve&#40;&#41;</code> because that&#39;s too complicated. Instead, we&#39;ll use <code>integ</code> and manually step through the solution. We&#39;ll update solution vectors along the way. </p>
 <pre><code class="julia hljs"><span class="hljs-keyword">function</span> solv(integ, tres, u1, u2, u3)
     <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-built_in">Int32</span>(<span class="hljs-number">1</span>):<span class="hljs-built_in">Int32</span>(<span class="hljs-number">10000</span>)
@@ -204,7 +204,15 @@ integ_types = js_types(typeof(integ))
 integ_def = js_def(integ)
 
 println(integ_types)</code></pre>
-<pre><code class="plaintext hljs">const SArray = new ffi.Struct({
+<pre><code class="plaintext hljs">const UniformScaling = new ffi.Struct({
+    _: &#x27;bool&#x27;,
+});
+
+const ODEFunction = new ffi.Struct({
+    mass_matrix: UniformScaling,
+});
+
+const SArray = new ffi.Struct({
     data: [&#x27;f64&#x27;, 3],
 });
 
@@ -221,6 +229,7 @@ const SArrayTuple_22__Float64_1_22 = new ffi.Struct({
 });
 
 const GPUTsit5Integrator = new ffi.Struct({
+    f: ODEFunction,
     uprev: SArray,
     u: SArray,
     tmp: SArray,
@@ -336,6 +345,14 @@ var u3 = new ffi.rust.<span class="hljs-built_in">vector</span>(<span class="hlj
 <script src="libs/wasm-ffi.browser.js"></script>
 
  <script>
+const UniformScaling = new ffi.Struct({
+    _: 'bool',
+});
+
+const ODEFunction = new ffi.Struct({
+    mass_matrix: UniformScaling,
+});
+
 const SArray = new ffi.Struct({
     data: ['f64', 3],
 });
@@ -353,6 +370,7 @@ const SArrayTuple_22__Float64_1_22 = new ffi.Struct({
 });
 
 const GPUTsit5Integrator = new ffi.Struct({
+    f: ODEFunction,
     uprev: SArray,
     u: SArray,
     tmp: SArray,
@@ -387,6 +405,11 @@ const GPUTsit5Integrator = new ffi.Struct({
 
 
 function new_integ() {return new GPUTsit5Integrator({
+f: new ODEFunction({
+mass_matrix: new UniformScaling({
+_: true,
+}),
+}),
 uprev: new SArray({
 data: [1.0,0.0,0.0],
 }),

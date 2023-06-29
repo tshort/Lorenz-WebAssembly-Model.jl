@@ -1,4 +1,12 @@
 <script>
+const UniformScaling = new ffi.Struct({
+    _: 'bool',
+});
+
+const ODEFunction = new ffi.Struct({
+    mass_matrix: UniformScaling,
+});
+
 const SArray = new ffi.Struct({
     data: ['f64', 3],
 });
@@ -16,6 +24,7 @@ const SArrayTuple_22__Float64_1_22 = new ffi.Struct({
 });
 
 const GPUTsit5Integrator = new ffi.Struct({
+    f: ODEFunction,
     uprev: SArray,
     u: SArray,
     tmp: SArray,
@@ -50,6 +59,11 @@ const GPUTsit5Integrator = new ffi.Struct({
 
 
 function new_integ() {return new GPUTsit5Integrator({
+f: new ODEFunction({
+mass_matrix: new UniformScaling({
+_: true,
+}),
+}),
 uprev: new SArray({
 data: [1.0,0.0,0.0],
 }),

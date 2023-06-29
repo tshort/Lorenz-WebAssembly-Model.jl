@@ -13,3 +13,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StaticCompiler = "81625895-6c0f-48fc-b932-11a18313743c"
 StaticTools = "86c06d3c-3f03-46de-9781-57580aa96d0a"
 WebAssemblyInterfaces = "74d8c2bb-7b3a-4d47-ac1c-f80c5e9b8189"
+
+
+[compat]
+DiffEqGPU = "2.4"

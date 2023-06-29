@@ -16,4 +16,4 @@ tspan = (0.0, 20.0)
 p = @SVector [10.0, 28.0, 8 / 3.0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
-integ = DiffEqGPU.gputsit5_init(GPUTsit5(), lorenz, false, u0, 0.0, 0.005, p, nothing, CallbackSet(nothing), true, false)
+integ = DiffEqGPU.init(GPUTsit5(), prob.f, false, u0, 0.0, 0.005, p, nothing, CallbackSet(nothing), true, false)
